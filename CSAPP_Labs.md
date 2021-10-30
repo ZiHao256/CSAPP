@@ -772,3 +772,142 @@ unsigned floatPower2(int x) {
 >
 >  The Bomb Lab teaches students principles of machine-level programs, as well as general debugger and reverse engineering skills
 
+
+
+> To avoid accidentally detonating the bomb, you will need to learn how to single-step through the assembly
+> code and how to set breakpoints. You will also need to learn how to inspect both the registers and the
+> memory states. One of the nice side-effects of doing the lab is that you will get very good at using a
+> debugger. This is a crucial skill that will pay big dividends the rest of your career.
+
+**Hints：**
+
+* gdb: 
+  * 对源码或者汇编代码单步执行，以免炸弹爆炸
+* objdump -t
+  * 输出炸弹的符号表
+  * the names of all functions and global variables in the bomb, the names of all the functions the bomb calls, and their addresses.
+* objdump -d
+  * 反汇编二进制文件
+* strings
+  * 
+
+##  2.2 准备工作
+
+**反汇编bomb二进制文件**
+
+`objdump -d bomb >> bomb.s`
+
+
+
+**输出bomb的符号表**
+
+`objdump -t bomb >> bomb_symbol_table`
+
+
+
+**读main函数**
+
+* initialize_bomb(): 启动炸弹
+
+* > Six phases must be more secure than one phase!
+
+  * 有六个阶段需要完成
+
+* **phase_1**(input);
+
+* **phase_2**(input);
+
+* **phase_3**(input);
+
+* **phase_4**(input);
+
+* **phase_5**(input);
+
+* **phase_6**(input);
+
+  * 可能需要gbd单步调试每个阶段，
+
+## 2.3 phase 1
+
+找到phase1对应的汇编代码：
+
+```assembly
+0000000000400ee0 <phase_1>:
+  400ee0:	48 83 ec 08          	sub    $0x8,%rsp
+  400ee4:	be 00 24 40 00       	mov    $0x402400,%esi
+  400ee9:	e8 4a 04 00 00       	callq  401338 <strings_not_equal>	#调用函数，0x402400(%esi),我们输入的字符串(%rdi)
+  400eee:	85 c0                	test   %eax,%eax	
+  400ef0:	74 05                	je     400ef7 <phase_1+0x17>		#如果返回值%eax为零，则拆弹成功
+  400ef2:	e8 43 05 00 00       	callq  40143a <explode_bomb>
+  400ef7:	48 83 c4 08          	add    $0x8,%rsp
+  400efb:	c3                   	retq  
+```
+
+
+
+phase1调用的函数strings_not_equal:
+
+```assembly
+0000000000401338 <strings_not_equal>:
+  401338:	41 54                	push   %r12
+  40133a:	55                   	push   %rbp
+  40133b:	53                   	push   %rbx
+  40133c:	48 89 fb             	mov    %rdi,%rbx
+  40133f:	48 89 f5             	mov    %rsi,%rbp
+  401342:	e8 d4 ff ff ff       	callq  40131b <string_length>
+  401347:	41 89 c4             	mov    %eax,%r12d
+  40134a:	48 89 ef             	mov    %rbp,%rdi
+  40134d:	e8 c9 ff ff ff       	callq  40131b <string_length>
+  401352:	ba 01 00 00 00       	mov    $0x1,%edx
+  401357:	41 39 c4             	cmp    %eax,%r12d
+  40135a:	75 3f                	jne    40139b <strings_not_equal+0x63>
+  40135c:	0f b6 03             	movzbl (%rbx),%eax		#将我们输入的字符串，复制到%eax中
+  40135f:	84 c0                	test   %al,%al
+  401361:	74 25                	je     401388 <strings_not_equal+0x50>
+  401363:	3a 45 00             	cmp    0x0(%rbp),%al	#重点，因为%rbp存着0x402400，而%rax存着我们输入的字符串
+  401366:	74 0a                	je     401372 <strings_not_equal+0x3a>
+  401368:	eb 25                	jmp    40138f <strings_not_equal+0x57>
+  40136a:	3a 45 00             	cmp    0x0(%rbp),%al
+  40136d:	0f 1f 00             	nopl   (%rax)
+  401370:	75 24                	jne    401396 <strings_not_equal+0x5e>
+  401372:	48 83 c3 01          	add    $0x1,%rbx
+  401376:	48 83 c5 01          	add    $0x1,%rbp
+  40137a:	0f b6 03             	movzbl (%rbx),%eax
+  40137d:	84 c0                	test   %al,%al
+  40137f:	75 e9                	jne    40136a <strings_not_equal+0x32>
+  401381:	ba 00 00 00 00       	mov    $0x0,%edx
+  401386:	eb 13                	jmp    40139b <strings_not_equal+0x63>
+  401388:	ba 00 00 00 00       	mov    $0x0,%edx
+  40138d:	eb 0c                	jmp    40139b <strings_not_equal+0x63>
+  40138f:	ba 01 00 00 00       	mov    $0x1,%edx
+  401394:	eb 05                	jmp    40139b <strings_not_equal+0x63>
+  401396:	ba 01 00 00 00       	mov    $0x1,%edx
+  40139b:	89 d0                	mov    %edx,%eax
+  40139d:	5b                   	pop    %rbx
+  40139e:	5d                   	pop    %rbp
+  40139f:	41 5c                	pop    %r12
+  4013a1:	c3                   	retq   
+```
+
+
+调用的explode_bomb：
+
+```assembly
+000000000040143a <explode_bomb>:
+  40143a:	48 83 ec 08          	sub    $0x8,%rsp
+  40143e:	bf a3 25 40 00       	mov    $0x4025a3,%edi
+  401443:	e8 c8 f6 ff ff       	callq  400b10 <puts@plt>
+  401448:	bf ac 25 40 00       	mov    $0x4025ac,%edi
+  40144d:	e8 be f6 ff ff       	callq  400b10 <puts@plt>
+  401452:	bf 08 00 00 00       	mov    $0x8,%edi
+  401457:	e8 c4 f7 ff ff       	callq  400c20 <exit@plt>
+```
+
+
+
+分析得：函数strings_not_equal,查看了我们输入的字符串和内存地址0x402400处所存的是否相等。
+
+* 取出内存地址的值：使用`examine`缩写`x`命令，查看值 [参考](https://blog.csdn.net/zzymusic/article/details/4815142)
+  * `x/s 0x402400`
+  * 得到：`0x402400:       "Border relations with Canada have never been better."`
+
