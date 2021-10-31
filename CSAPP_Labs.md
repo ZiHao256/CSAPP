@@ -825,9 +825,9 @@ unsigned floatPower2(int x) {
 
 * **phase_6**(input);
 
-  * 可能需要gbd单步调试每个阶段，
+  * 可能需要gbd单步调试每个阶段
 
-## 2.3 phase 1
+## phase 1
 
 找到phase1对应的汇编代码：
 
@@ -845,7 +845,7 @@ unsigned floatPower2(int x) {
 
 
 
-phase1调用的函数strings_not_equal:
+phase1 调用的函数strings_not_equal:
 
 ```assembly
 0000000000401338 <strings_not_equal>:
@@ -905,9 +905,87 @@ phase1调用的函数strings_not_equal:
 
 
 
-分析得：函数strings_not_equal,查看了我们输入的字符串和内存地址0x402400处所存的是否相等。
+**分析**：函数strings_not_equal,查看了我们输入的字符串和内存地址 `0x402400` 处所存的字符串是否相等。
 
 * 取出内存地址的值：使用`examine`缩写`x`命令，查看值 [参考](https://blog.csdn.net/zzymusic/article/details/4815142)
   * `x/s 0x402400`
   * 得到：`0x402400:       "Border relations with Canada have never been better."`
 
+## phase 2
+
+phase2:
+
+```assembly
+0000000000400efc <phase_2>:
+  400efc:	55                   	push   %rbp
+  400efd:	53                   	push   %rbx
+  400efe:	48 83 ec 28          	sub    $0x28,%rsp
+  400f02:	48 89 e6             	mov    %rsp,%rsi
+  400f05:	e8 52 05 00 00       	callq  40145c <read_six_numbers>
+  400f0a:	83 3c 24 01          	cmpl   $0x1,(%rsp)
+  400f0e:	74 20                	je     400f30 <phase_2+0x34>
+  400f10:	e8 25 05 00 00       	callq  40143a <explode_bomb>
+  400f15:	eb 19                	jmp    400f30 <phase_2+0x34>
+  400f17:	8b 43 fc             	mov    -0x4(%rbx),%eax
+  400f1a:	01 c0                	add    %eax,%eax
+  400f1c:	39 03                	cmp    %eax,(%rbx)
+  400f1e:	74 05                	je     400f25 <phase_2+0x29>
+  400f20:	e8 15 05 00 00       	callq  40143a <explode_bomb>
+  400f25:	48 83 c3 04          	add    $0x4,%rbx
+  400f29:	48 39 eb             	cmp    %rbp,%rbx
+  400f2c:	75 e9                	jne    400f17 <phase_2+0x1b>
+  400f2e:	eb 0c                	jmp    400f3c <phase_2+0x40>
+  400f30:	48 8d 5c 24 04       	lea    0x4(%rsp),%rbx
+  400f35:	48 8d 6c 24 18       	lea    0x18(%rsp),%rbp
+  400f3a:	eb db                	jmp    400f17 <phase_2+0x1b>
+  400f3c:	48 83 c4 28          	add    $0x28,%rsp
+  400f40:	5b                   	pop    %rbx
+  400f41:	5d                   	pop    %rbp
+  400f42:	c3                   	retq 
+```
+
+调用的 read_six_numbers
+
+```assembly
+000000000040145c <read_six_numbers>:
+  40145c:	48 83 ec 18          	sub    $0x18,%rsp
+  401460:	48 89 f2             	mov    %rsi,%rdx
+  401463:	48 8d 4e 04          	lea    0x4(%rsi),%rcx
+  401467:	48 8d 46 14          	lea    0x14(%rsi),%rax
+  40146b:	48 89 44 24 08       	mov    %rax,0x8(%rsp)
+  401470:	48 8d 46 10          	lea    0x10(%rsi),%rax
+  401474:	48 89 04 24          	mov    %rax,(%rsp)
+  401478:	4c 8d 4e 0c          	lea    0xc(%rsi),%r9
+  40147c:	4c 8d 46 08          	lea    0x8(%rsi),%r8
+  401480:	be c3 25 40 00       	mov    $0x4025c3,%esi
+  401485:	b8 00 00 00 00       	mov    $0x0,%eax
+  40148a:	e8 61 f7 ff ff       	callq  400bf0 <__isoc99_sscanf@plt>
+  40148f:	83 f8 05             	cmp    $0x5,%eax
+  401492:	7f 05                	jg     401499 <read_six_numbers+0x3d>
+  401494:	e8 a1 ff ff ff       	callq  40143a <explode_bomb>
+  401499:	48 83 c4 18          	add    $0x18,%rsp
+  40149d:	c3                   	retq  
+```
+
+< __isoc99_sscanf@plt >
+
+```assembly
+0000000000400bf0 <__isoc99_sscanf@plt>:
+  400bf0:	ff 25 92 24 20 00    	jmpq   *0x202492(%rip)        # 603088 <__isoc99_sscanf@GLIBC_2.7>
+  400bf6:	68 11 00 00 00       	pushq  $0x11
+  400bfb:	e9 d0 fe ff ff       	jmpq   400ad0 <.plt>
+```
+< .plt >
+
+```assembly
+0000000000400ad0 <.plt>:
+  400ad0:	ff 35 1a 25 20 00    	pushq  0x20251a(%rip)        # 602ff0 <_GLOBAL_OFFSET_TABLE_+0x8>
+  400ad6:	ff 25 1c 25 20 00    	jmpq   *0x20251c(%rip)        # 602ff8 <_GLOBAL_OFFSET_TABLE_+0x10>
+  400adc:	0f 1f 40 00          	nopl   0x0(%rax)
+```
+
+
+
+分析：
+
+* 
